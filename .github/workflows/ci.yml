@@ -7,10 +7,9 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
-    name: Run Integrity Tests
+  integrity-tests:
+    name: 🧪 Unit & Integrity Tests
     runs-on: ubuntu-latest
-
     steps:
       - name: 🔍 Checkout Repository
         uses: actions/checkout@v4
@@ -27,21 +26,43 @@ jobs:
       - name: 🧪 Run Unit Tests (Order Validation & Stock Deduction)
         run: npm test
 
-      - name: 🏗 Build Project (Sanity Check)
+      - name: 🏗 Vite Build Sanity Check
         run: npm run build
+
+  docker-build-test:
+    name: 🐳 Docker Build & Launch Test
+    needs: integrity-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔍 Checkout Repository
+        uses: actions/checkout@v4
 
       - name: 🐳 Build Docker Images (All Services)
         working-directory: ./iut-cafeteria-v2
         run: docker compose build
 
-      - name: 🚀 Verify Services Launch
+      - name: 🚀 Verify Services Launch (Smoke Test)
         working-directory: ./iut-cafeteria-v2
         run: |
           docker compose up -d
-          sleep 15
+          echo "Waiting for services to be healthy..."
+          sleep 20
+          
+          # Health checks
+          echo "Checking Gateway..."
           curl -f http://localhost:3000/health || exit 1
+          
+          echo "Checking Stock Service..."
           curl -f http://localhost:3001/health || exit 1
+          
+          echo "Checking Identity Provider..."
           curl -f http://localhost:3002/health || exit 1
+          
+          echo "Checking Notification Hub..."
           curl -f http://localhost:3005/health || exit 1
+          
+          echo "Checking Student UI..."
           curl -f http://localhost:5173 || exit 1
+          
+          echo "✅ All services smoke tests passed!"
           docker compose down
