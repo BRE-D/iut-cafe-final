@@ -1,0 +1,97 @@
+version: '3.8'
+
+networks:
+  cafeteria-net:
+    driver: bridge
+
+services:
+
+  identity-provider:
+    build: ./identity-provider
+    container_name: identity-provider
+    ports:
+      - "3002:3002"
+    environment:
+      - JWT_SECRET=IUT_CAFETERIA_DEVSPRINT_2026_SECRET
+      - NODE_ENV=production
+    networks:
+      - cafeteria-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  stock-service:
+    build: ./stock-service
+    container_name: stock-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - cafeteria-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  notification-hub:
+    build: ./notification-hub
+    container_name: notification-hub
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - cafeteria-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3005/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - JWT_SECRET=IUT_CAFETERIA_DEVSPRINT_2026_SECRET
+      - NODE_ENV=production
+      - STOCK_SERVICE_URL=http://stock-service:3001
+      - IDENTITY_SERVICE_URL=http://identity-provider:3002
+      - NOTIFICATION_HUB_URL=http://notification-hub:3005
+    depends_on:
+      identity-provider:
+        condition: service_healthy
+      stock-service:
+        condition: service_healthy
+      notification-hub:
+        condition: service_healthy
+    networks:
+      - cafeteria-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  student-ui:
+    build:
+      context: ../
+      dockerfile: iut-cafeteria-v2/student-ui/Dockerfile
+    container_name: student-ui
+    ports:
+      - "5173:80"
+    depends_on:
+      gateway:
+        condition: service_healthy
+    networks:
+      - cafeteria-net
+    restart: unless-stopped

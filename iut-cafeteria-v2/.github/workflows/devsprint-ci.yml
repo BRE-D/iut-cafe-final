@@ -1,0 +1,42 @@
+name: DevSprint CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install stock-service dependencies
+        working-directory: ./iut-cafeteria-v2/stock-service
+        run: npm install
+
+      - name: Run stock-service tests
+        working-directory: ./iut-cafeteria-v2/stock-service
+        run: npm test
+
+      - name: Build Docker images
+        working-directory: ./iut-cafeteria-v2
+        run: docker compose build
+
+      - name: Verify all services start
+        working-directory: ./iut-cafeteria-v2
+        run: |
+          docker compose up -d
+          sleep 15
+          curl -f http://localhost:3000/health || exit 1
+          curl -f http://localhost:3001/health || exit 1
+          curl -f http://localhost:3002/health || exit 1
+          curl -f http://localhost:3005/health || exit 1
+          docker compose down
