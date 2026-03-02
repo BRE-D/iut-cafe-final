@@ -29,3 +29,19 @@ jobs:
 
       - name: 🏗 Build Project (Sanity Check)
         run: npm run build
+
+      - name: 🐳 Build Docker Images (All Services)
+        working-directory: ./iut-cafeteria-v2
+        run: docker compose build
+
+      - name: 🚀 Verify Services Launch
+        working-directory: ./iut-cafeteria-v2
+        run: |
+          docker compose up -d
+          sleep 15
+          curl -f http://localhost:3000/health || exit 1
+          curl -f http://localhost:3001/health || exit 1
+          curl -f http://localhost:3002/health || exit 1
+          curl -f http://localhost:3005/health || exit 1
+          curl -f http://localhost:5173 || exit 1
+          docker compose down
