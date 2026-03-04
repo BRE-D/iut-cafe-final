@@ -120,7 +120,6 @@ Key variables in `.env`:
 ```env
 VITE_API_URL=http://localhost:3000/api
 VITE_SSE_URL=http://localhost:3003/events
-JWT_SECRET=your-secret-here
 ```
 
 ### 4. Launch everything
